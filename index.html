@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🚀 Virtual Memory Manager (Web)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #a8edea, #fed6e3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      margin-top: 30px;
+      color: #333;
+      text-shadow: 1px 1px 2px #fff;
+    }
+
+    .controls {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 20px 30px;
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+    .controls input,
+    .controls button {
+      margin: 10px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+    }
+
+    .controls input {
+      width: 150px;
+      background-color: #fff;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    }
+
+    .controls button {
+      background: #ff6f91;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: bold;
+    }
+
+    .controls button:hover {
+      background: #ff3e66;
+      transform: scale(1.05);
+    }
+
+    #memory {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 30px;
+      max-width: 80%;
+    }
+
+    .frame {
+      width: 90px;
+      height: 60px;
+      margin: 8px;
+      border-radius: 15px;
+      background: #fff;
+      color: #333;
+      font-weight: bold;
+      line-height: 60px;
+      text-align: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      animation: pop 0.4s ease;
+    }
+
+    @keyframes pop {
+      0% {
+        transform: scale(0.7);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    #log {
+      margin-top: 30px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 15px;
+      width: 80%;
+      max-width: 700px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+      text-align: left;
+    }
+
+    #log h3 {
+      margin-top: 0;
+      color: #444;
+    }
+
+    #log p {
+      margin: 6px 0;
+      font-family: monospace;
+      color: #333;
+    }
+
+    ::selection {
+      background: #ffe4ec;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 Virtual Memory Manager</h1>
+
+  <div class="controls">
+    <input id="pid" type="number" placeholder="Process ID">
+    <input id="pages" type="number" placeholder="No. of Pages">
+    <button onclick="allocate()">Allocate</button>
+    <button onclick="deallocate()">Deallocate</button>
+    <button onclick="fragmentation()">Fragmentation</button>
+    <button onclick="compact()">Compact</button>
+    <button onclick="simulateFIFO()">Sim FIFO</button>
+  </div>
+
+  <div id="memory"></div>
+
+  <div id="log"><h3>📜 Action Log</h3></div>
+
+  <script>
+    function updateMemory() {
+      fetch("/status")
+        .then(res => res.json())
+        .then(data => {
+          const div = document.getElementById("memory");
+          div.innerHTML = "";
+          data.memory.forEach((m, i) => {
+            const box = document.createElement("div");
+            box.className = "frame";
+            box.innerText = m ? `P${m[0]}:Pg${m[1]}` : "Empty";
+            div.appendChild(box);
+          });
+        });
+    }
+
+    function allocate() {
+      const pid = document.getElementById("pid").value;
+      const pages = document.getElementById("pages").value;
+      fetch("/allocate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pid, pages })
+      })
+      .then(res => res.json())
+      .then(data => {
+        log(`✅ Allocated ${data.allocated} pages`);
+        updateMemory();
+      });
+    }
+
+    function deallocate() {
+      const pid = document.getElementById("pid").value;
+      fetch("/deallocate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pid })
+      })
+      .then(res => res.json())
+      .then(data => {
+        log(`🗑️ Deallocated ${data.deallocated} frames`);
+        updateMemory();
+      });
+    }
+
+    function fragmentation() {
+      fetch("/fragmentation")
+        .then(res => res.json())
+        .then(data => {
+          log(`🔍 Fragmentation: ${data.holes.length} holes (${data.percent}%)`);
+        });
+    }
+
+    function compact() {
+      fetch("/compact")
+        .then(() => {
+          log("🧹 Memory compacted");
+          updateMemory();
+        });
+    }
+
+    function simulateFIFO() {
+      fetch("/simulate_fifo")
+        .then(res => res.json())
+        .then(data => {
+          data.log.forEach(entry => log(entry));
+        });
+    }
+
+    function log(message) {
+      const logDiv = document.getElementById("log");
+      logDiv.innerHTML += `<p>${message}</p>`;
+    }
+
+    updateMemory(); // Load memory state on page load
+  </script>
+</body>
+</html>
